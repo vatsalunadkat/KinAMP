@@ -1,12 +1,16 @@
 KinAMP - It really whimps the llama's ass!
 ==========================================
 
-Kinamp is a native music player developed for jailbroken Kindles.
+![Screenshot](assets/screenshot.jpg)
+
+Kinamp is a native music player developed for jailbroken Kindles (Firmware 5.16+).
 
 Supported audio formats:
 - MP3
 - FLAC
 - WAV
+
+Note that this is a GUI app, cannot run in the backgroud. To listen to music while reading, [SOX media player](https://www.mobileread.com/forums/showthread.php?t=368945) is a better alternative.
 
 Features
 --------
@@ -14,6 +18,7 @@ Features
 - Fully native fast (C++ and GTK2) interface
 - Simple to use
 - Interface optimized for eink displays (minimal redraws to save battery)
+- Fast access to Bluetooth and frontlight settings
 - Uses miniaudio library for decoding.
 - Uses the integrated GStreamer as backend
 - No other dependencies
@@ -26,7 +31,7 @@ Download the latest release and unzip it to the root of the Kindle. Start it fro
 Building
 --------
 
-Install the kox toolchain, copy the misc/ to the current folder and adapt it to your paths.
+Install the kox toolchain, clone the GIT repo and adapt it to your paths in the armhf-toolchain.cmake file.
 
 ```
 git clone --recurse-submodules https://github.com/kbarni/KinAMP

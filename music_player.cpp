@@ -26,6 +26,7 @@
 #include "assets/repeat_icon.h"
 #include "assets/shuffle_on_icon.h"
 #include "assets/repeat_on_icon.h"
+#include "assets/sunny_icon.h"
 
 enum PlaybackStrategy {
     NORMAL,
@@ -41,6 +42,7 @@ struct AppData {
     GtkLabel *time_label;
 
     PlaybackStrategy current_strategy;
+    int flIntensity;
     bool next_song_pending;
     std::string next_song_path;
     std::string last_title; // Cache to avoid redundant UI updates
@@ -70,6 +72,17 @@ void enableSleep() {
 
 void disableSleep() {
     LipcSetIntProperty(lipcInstance,"com.lab126.powerd","preventScreenSaver",1);
+}
+
+void toggleFrontLight(AppData *ad){
+    int intensity = 0;
+    LipcGetIntProperty(lipcInstance,"com.lab126.powerd","flIntensity",&intensity);
+    if(intensity == 0) {
+        LipcSetIntProperty(lipcInstance,"com.lab126.powerd","flIntensity",ad->flIntensity);
+    } else {
+        ad->flIntensity=intensity;
+        LipcSetIntProperty(lipcInstance,"com.lab126.powerd","flIntensity",0);
+    }
 }
 
 void set_button_icon(GtkWidget *button, const unsigned char *icon_data) {
@@ -277,6 +290,7 @@ void save_state(AppData *app_data) {
     std::ofstream conffile(config_path.c_str());
     if (conffile.is_open()) {
         conffile << "current_index=" << current_index << std::endl;
+        conffile << "playback_strategy=" << app_data->current_strategy << std::endl;
         conffile.close();
     }
 }
@@ -302,8 +316,25 @@ void load_state(AppData *app_data) {
     int current_index = -1;
     if (conffile.is_open()) {
         std::string line;
-        if (std::getline(conffile, line) && line.find("current_index=") == 0) {
-            current_index = atoi(line.substr(14).c_str());
+        while (std::getline(conffile, line)) {
+            if (line.find("current_index=") == 0) {
+                current_index = atoi(line.substr(14).c_str());
+            }
+            if (line.find("playback_strategy=") == 0) {
+                int strategy = atoi(line.substr(20).c_str());
+                app_data->current_strategy = (PlaybackStrategy)strategy;
+
+                if (app_data->current_strategy == RANDOM) {
+                    set_button_icon(app_data->shuffle_button, shuffle_on_icon);
+                    set_button_icon(app_data->repeat_button, repeat_icon);
+                } else if (app_data->current_strategy == REPEAT) {
+                    set_button_icon(app_data->shuffle_button, shuffle_icon);
+                    set_button_icon(app_data->repeat_button, repeat_on_icon);
+                } else {
+                    set_button_icon(app_data->shuffle_button, shuffle_icon);
+                    set_button_icon(app_data->repeat_button, repeat_icon);
+                }
+            }
         }
         conffile.close();
     }
@@ -343,7 +374,7 @@ void add_directory_to_playlist(const char *dir_path, GtkListStore *playlist_stor
         }
         else {
             const char *ext = strrchr(entry->d_name, '.');
-            if (ext && strcmp(ext, ".mp3") == 0) {
+            if (ext && (strcmp(ext, ".mp3") == 0 || strcmp(ext, ".flac") == 0 || strcmp(ext, ".wav") == 0)) {
                 files.push_back(std::string(dir_path) + "/" + entry->d_name);
             }
         }
@@ -479,6 +510,12 @@ void on_repeat_clicked(GtkWidget *widget, gpointer data) {
     g_print("Repeat mode toggled. New strategy: %d\n", app_data->current_strategy);
 }
 
+void on_fl_clicked(GtkWidget *widget, gpointer data) {
+    (void)widget;
+    AppData *app_data = (AppData*)data;
+    toggleFrontLight(app_data);
+}
+
 void on_bluetooth_clicked(GtkWidget *widget, gpointer data) {
     (void)widget;
     (void)data;
@@ -501,8 +538,10 @@ void on_add_file_clicked(GtkWidget *widget, gpointer data) {
     gtk_file_chooser_set_select_multiple(GTK_FILE_CHOOSER(dialog), TRUE);
 
     GtkFileFilter *filter = gtk_file_filter_new();
-    gtk_file_filter_set_name(filter, "MP3 files");
+    gtk_file_filter_set_name(filter, "Music files");
     gtk_file_filter_add_pattern(filter, "*.mp3");
+    gtk_file_filter_add_pattern(filter, "*.flac");
+    gtk_file_filter_add_pattern(filter, "*.wav");
     gtk_file_chooser_add_filter(GTK_FILE_CHOOSER(dialog), filter);
 
     if (gtk_dialog_run(GTK_DIALOG(dialog)) == GTK_RESPONSE_ACCEPT) {
@@ -630,6 +669,7 @@ int main(int argc, char* argv[]) {
     app_data.backend = &backend;
     app_data.current_strategy = NORMAL;
     app_data.next_song_pending = false;
+    app_data.flIntensity = 0;
 
     backend.set_eos_callback(on_eos_cb, &app_data);
 
@@ -700,6 +740,8 @@ int main(int argc, char* argv[]) {
     app_data.shuffle_button = shuffle_button;
     GtkWidget *repeat_button = create_button_from_icon(repeat_icon, 72, 72, 5);
     app_data.repeat_button = repeat_button;
+
+    GtkWidget *frontlight_button = create_button_from_icon(sunny_icon, 72, 72, 5);
     GtkWidget *bluetooth_button = create_button_from_icon(bluetooth_icon, 72, 72, 5);
     GtkWidget *close_button = create_button_from_icon(close_icon, 72, 72, 5);
 
@@ -710,8 +752,9 @@ int main(int argc, char* argv[]) {
     
     g_signal_connect(shuffle_button, "clicked", G_CALLBACK(on_shuffle_clicked), &app_data);
     g_signal_connect(repeat_button, "clicked", G_CALLBACK(on_repeat_clicked), &app_data);
+ 
+    g_signal_connect(frontlight_button, "clicked", G_CALLBACK(on_fl_clicked), &app_data);
     g_signal_connect(bluetooth_button, "clicked", G_CALLBACK(on_bluetooth_clicked), &app_data);
-    
     g_signal_connect(close_button, "clicked", G_CALLBACK(on_close_clicked), &app_data);
 
     // Pack buttons
@@ -736,6 +779,7 @@ int main(int argc, char* argv[]) {
 
     // Right aligned section (Bluetooth + Close)
     GtkWidget *right_controls_hbox = gtk_hbox_new(FALSE, 2);
+    gtk_box_pack_start(GTK_BOX(right_controls_hbox), frontlight_button, FALSE, FALSE, 0);
     gtk_box_pack_start(GTK_BOX(right_controls_hbox), bluetooth_button, FALSE, FALSE, 0);
     gtk_box_pack_start(GTK_BOX(right_controls_hbox), close_button, FALSE, FALSE, 0);
     gtk_box_pack_start(GTK_BOX(controls_hbox), right_controls_hbox, FALSE, FALSE, 0);
