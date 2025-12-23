@@ -21,7 +21,7 @@
 #include "assets/skip_previous_icon.h"
 #include "assets/stop_icon.h"
 #include "assets/title_icon.h"
-#include "assets/title_christmas_icon.h"
+#include "assets/title_christmas.h"
 #include "assets/shuffle_icon.h"
 #include "assets/repeat_icon.h"
 #include "assets/shuffle_on_icon.h"
@@ -53,7 +53,7 @@ static LIPC * lipcInstance = 0;
 void openLipcInstance() {
 	if (lipcInstance == 0) {
 		fwprintf(stderr, L"---->openLipcInstance()\n");
-		lipcInstance = LipcOpen("net.fabiszewski.gargoyle");
+		lipcInstance = LipcOpen("com.kbarni.kinamp");
 	}
 }
 
@@ -62,6 +62,14 @@ void closeLipcInstance() {
 		fwprintf(stderr, L"---->closeLipcInstance()\n");
 		LipcClose(lipcInstance);
 	}
+}
+
+void enableSleep() {
+    LipcSetIntProperty(lipcInstance,"com.lab126.powerd","preventScreenSaver",0);
+}
+
+void disableSleep() {
+    LipcSetIntProperty(lipcInstance,"com.lab126.powerd","preventScreenSaver",1);
 }
 
 void set_button_icon(GtkWidget *button, const unsigned char *icon_data) {
@@ -435,6 +443,8 @@ void on_next_clicked(GtkWidget *widget, gpointer data) {
 
 void on_close_clicked(GtkWidget *widget, gpointer data) {
     (void)widget;
+    enableSleep();
+    closeLipcInstance();
     AppData *app_data = (AppData*)data;
     save_state(app_data);
     app_data->backend->stop();
@@ -472,8 +482,8 @@ void on_repeat_clicked(GtkWidget *widget, gpointer data) {
 void on_bluetooth_clicked(GtkWidget *widget, gpointer data) {
     (void)widget;
     (void)data;
-    g_print("Bluetooth clicked\n");
-    // TODO: Implement Bluetooth pairing dialog
+    LipcSetStringProperty(lipcInstance,"com.lab126.btfd","BTenable","1:1");
+    LipcSetStringProperty(lipcInstance,"com.lab126.pillow","customDialog","{\"name\":\"bt_wizard_dialog\", \"clientParams\": {\"show\":true, \"winmgrModal\":true, \"replySrc\":\"\"}}");
 }
 
 
@@ -623,6 +633,9 @@ int main(int argc, char* argv[]) {
 
     backend.set_eos_callback(on_eos_cb, &app_data);
 
+    openLipcInstance();
+    disableSleep();
+
     // --- Main Window ---
     GtkWidget *window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
     gtk_window_set_default_size(GTK_WINDOW(window), 600, 400);
@@ -639,7 +652,7 @@ int main(int argc, char* argv[]) {
     gtk_box_pack_start(GTK_BOX(main_vbox), player_vbox, FALSE, FALSE, 0);
 
     // First line: Title Image
-    GdkPixbuf *title_pixbuf = gdk_pixbuf_new_from_inline(-1, title_christmas_icon, FALSE, NULL);
+    GdkPixbuf *title_pixbuf = gdk_pixbuf_new_from_inline(-1, title_christmas, FALSE, NULL);
     GtkWidget *title_image = gtk_image_new_from_pixbuf(title_pixbuf);
     g_object_unref(title_pixbuf); // GtkImage takes a copy or ref? documentation says it takes a ref, but usually safe to unref if not needed else. 
     // Actually, create_from_pixbuf adds a ref. We should unref ours.
