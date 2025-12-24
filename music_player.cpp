@@ -296,6 +296,7 @@ void save_state(AppData *app_data) {
 
 void load_state(AppData *app_data) {
     std::string playlist_path = get_config_path(".kinamp_playlist.m3u");
+    fwprintf(stderr, L"Opening %s\n",playlist_path.c_str());
     std::ifstream infile(playlist_path.c_str());
     if (infile.is_open()) {
         gtk_list_store_clear(app_data->playlist_store);
@@ -311,6 +312,7 @@ void load_state(AppData *app_data) {
     }
 
     std::string config_path = get_config_path(".kinamp.conf");
+    fwprintf(stderr, L"Opening %s\n",config_path.c_str());
     std::ifstream conffile(config_path.c_str());
     int current_index = -1;
     if (conffile.is_open()) {
@@ -318,11 +320,12 @@ void load_state(AppData *app_data) {
         while (std::getline(conffile, line)) {
             if (line.find("current_index=") == 0) {
                 current_index = atoi(line.substr(14).c_str());
+                fwprintf(stderr, L"Loaded current_index=%d\n",current_index);
             }
             if (line.find("playback_strategy=") == 0) {
-                int strategy = atoi(line.substr(20).c_str());
+                int strategy = atoi(line.substr(18).c_str());
                 app_data->current_strategy = (PlaybackStrategy)strategy;
-
+                fwprintf(stderr, L"Loaded playback_strategy=%d\n",strategy);
                 if (app_data->current_strategy == RANDOM) {
                     set_button_icon(app_data->shuffle_button, shuffle_on_icon);
                     set_button_icon(app_data->repeat_button, repeat_icon);
@@ -337,7 +340,7 @@ void load_state(AppData *app_data) {
         }
         conffile.close();
     }
-
+    fwprintf(stderr, L"Closing files\n");
     if (current_index != -1) {
         GtkTreePath *path = gtk_tree_path_new_from_indices(current_index, -1);
         if (path) {
@@ -541,7 +544,7 @@ void on_add_file_clicked(GtkWidget *widget, gpointer data) {
     (void)widget;
     AppData *app_data = (AppData*)data;
     GtkListStore *playlist_store = app_data->playlist_store;
-    GtkWidget *dialog = gtk_file_chooser_dialog_new("L:D_N:dialog_PC:TS_ID:com.kbarni.kinamp",
+    GtkWidget *dialog = gtk_file_chooser_dialog_new("L:A_N:application_PC:TS_ID:com.kbarni.kinamp",
                                                   NULL,
                                                   GTK_FILE_CHOOSER_ACTION_OPEN,
                                                   GTK_STOCK_CANCEL, GTK_RESPONSE_CANCEL,
@@ -574,7 +577,7 @@ void on_add_folder_clicked(GtkWidget *widget, gpointer data) {
     (void)widget;
     AppData *app_data = (AppData*)data;
     GtkListStore *playlist_store = app_data->playlist_store;
-    GtkWidget *dialog = gtk_file_chooser_dialog_new("L:D_N:dialog_PC:TS_ID:com.kbarni.kinamp",
+    GtkWidget *dialog = gtk_file_chooser_dialog_new("L:A_N:application_PC:TS_ID:com.kbarni.kinamp",
                                                   NULL,
                                                   GTK_FILE_CHOOSER_ACTION_SELECT_FOLDER,
                                                   GTK_STOCK_CANCEL, GTK_RESPONSE_CANCEL,
@@ -599,7 +602,7 @@ void on_save_clicked(GtkWidget *widget, gpointer data) {
     (void)widget;
     AppData *app_data = (AppData*)data;
     GtkListStore *playlist_store = app_data->playlist_store;
-    GtkWidget *dialog = gtk_file_chooser_dialog_new("L:D_N:dialog_PC:TS_ID:com.kbarni.kinamp",
+    GtkWidget *dialog = gtk_file_chooser_dialog_new("L:A_N:application_PC:TS_ID:com.kbarni.kinamp",
                                                   NULL,
                                                   GTK_FILE_CHOOSER_ACTION_SAVE,
                                                   GTK_STOCK_CANCEL, GTK_RESPONSE_CANCEL,
@@ -638,7 +641,7 @@ void on_load_clicked(GtkWidget *widget, gpointer data) {
     (void)widget;
     AppData *app_data = (AppData*)data;
     GtkListStore *playlist_store = app_data->playlist_store;
-    GtkWidget *dialog = gtk_file_chooser_dialog_new("L:D_N:dialog_PC:TS_ID:com.kbarni.kinamp",
+    GtkWidget *dialog = gtk_file_chooser_dialog_new("L:A_N:application_PC:TS_ID:com.kbarni.kinamp",
                                                   NULL,
                                                   GTK_FILE_CHOOSER_ACTION_OPEN,
                                                   GTK_STOCK_CANCEL, GTK_RESPONSE_CANCEL,
@@ -687,6 +690,8 @@ int main(int argc, char* argv[]) {
 
     openLipcInstance();
     disableSleep();
+    LipcGetIntProperty(lipcInstance,"com.lab126.powerd","flIntensity",&app_data.flIntensity);
+
 
     // --- Main Window ---
     GtkWidget *window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
@@ -859,6 +864,7 @@ int main(int argc, char* argv[]) {
 
 
     // --- Load State and Show Window ---
+    fwprintf(stderr, L"---->Loading state\n");
     load_state(&app_data);
     g_timeout_add(200, update_progress_cb, &app_data);
     gtk_widget_show_all(window);

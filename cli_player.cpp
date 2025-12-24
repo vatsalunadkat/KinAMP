@@ -1,6 +1,5 @@
 #include <glib.h>
 #include <gst/gst.h>
-#include <iostream>
 #include <vector>
 #include <string>
 #include <algorithm>
@@ -80,7 +79,7 @@ void load_default_state(CliState* state) {
                 state->current_index = atoi(line.substr(14).c_str());
             }
             if (line.find("playback_strategy=") == 0) {
-                int strat = atoi(line.substr(20).c_str());
+                int strat = atoi(line.substr(18).c_str());
                 state->strategy = (PlaybackStrategy)strat;
             }
         }
