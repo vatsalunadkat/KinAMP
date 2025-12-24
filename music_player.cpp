@@ -27,6 +27,7 @@
 #include "assets/shuffle_on_icon.h"
 #include "assets/repeat_on_icon.h"
 #include "assets/sunny_icon.h"
+#include "assets/standby_icon.h"
 
 enum PlaybackStrategy {
     NORMAL,
@@ -197,11 +198,9 @@ gboolean update_progress_cb(gpointer data) {
         int pos_seconds = position / GST_SECOND;
         
         if (app_data->backend->is_paused) {
-             snprintf(time_str, sizeof(time_str), "|| %02d:%02d",
-                     pos_seconds / 60, pos_seconds % 60);
+             snprintf(time_str, sizeof(time_str), " || --:--");//%02d:%02d", pos_seconds / 60, pos_seconds % 60);
         } else {
-             snprintf(time_str, sizeof(time_str), " > %02d:%02d",
-                     pos_seconds / 60, pos_seconds % 60);
+             snprintf(time_str, sizeof(time_str), " > --:--");//%02d:%02d", pos_seconds / 60, pos_seconds % 60);
         }
         gtk_label_set_text(app_data->time_label, time_str);
         
@@ -220,7 +219,7 @@ gboolean update_progress_cb(gpointer data) {
 
     } else {
         // Stopped state
-        gtk_label_set_text(app_data->time_label, "[] 00:00");
+        gtk_label_set_text(app_data->time_label, " [] --:--");
         if (app_data->last_title != "No song playing") {
             gtk_label_set_text(app_data->song_title_label, "No song playing");
             app_data->last_title = "No song playing";
@@ -472,13 +471,24 @@ void on_next_clicked(GtkWidget *widget, gpointer data) {
     }
 }
 
+void on_background_clicked(GtkWidget *widget, gpointer data) {
+    (void)widget;
+    AppData *app_data = (AppData*)data;
+    LipcSetIntProperty(lipcInstance,"com.lab126.powerd","flIntensity",app_data->flIntensity);
+    enableSleep();
+    closeLipcInstance();
+    save_state(app_data);
+    app_data->backend->stop();
+    gtk_main_quit();
+    exit(10); // Special exit code to signal background mode
+}
+
 void on_close_clicked(GtkWidget *widget, gpointer data) {
     (void)widget;
     AppData *app_data = (AppData*)data;
     LipcSetIntProperty(lipcInstance,"com.lab126.powerd","flIntensity",app_data->flIntensity);
     enableSleep();
     closeLipcInstance();
-    AppData *app_data = (AppData*)data;
     save_state(app_data);
     app_data->backend->stop();
     gtk_main_quit();
@@ -745,6 +755,7 @@ int main(int argc, char* argv[]) {
 
     GtkWidget *frontlight_button = create_button_from_icon(sunny_icon, 72, 72, 5);
     GtkWidget *bluetooth_button = create_button_from_icon(bluetooth_icon, 72, 72, 5);
+    GtkWidget *background_button = create_button_from_icon(standby_icon, 72, 72, 5);
     GtkWidget *close_button = create_button_from_icon(close_icon, 72, 72, 5);
 
     g_signal_connect(prev_button, "clicked", G_CALLBACK(on_previous_clicked), &app_data);
@@ -757,6 +768,7 @@ int main(int argc, char* argv[]) {
  
     g_signal_connect(frontlight_button, "clicked", G_CALLBACK(on_fl_clicked), &app_data);
     g_signal_connect(bluetooth_button, "clicked", G_CALLBACK(on_bluetooth_clicked), &app_data);
+    g_signal_connect(background_button, "clicked", G_CALLBACK(on_background_clicked), &app_data);
     g_signal_connect(close_button, "clicked", G_CALLBACK(on_close_clicked), &app_data);
 
     // Pack buttons
@@ -783,6 +795,7 @@ int main(int argc, char* argv[]) {
     GtkWidget *right_controls_hbox = gtk_hbox_new(FALSE, 2);
     gtk_box_pack_start(GTK_BOX(right_controls_hbox), frontlight_button, FALSE, FALSE, 0);
     gtk_box_pack_start(GTK_BOX(right_controls_hbox), bluetooth_button, FALSE, FALSE, 0);
+    gtk_box_pack_start(GTK_BOX(right_controls_hbox), background_button, FALSE, FALSE, 0);
     gtk_box_pack_start(GTK_BOX(right_controls_hbox), close_button, FALSE, FALSE, 0);
     gtk_box_pack_start(GTK_BOX(controls_hbox), right_controls_hbox, FALSE, FALSE, 0);
 
