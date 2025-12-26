@@ -27,6 +27,7 @@
 #include "assets/repeat_on_icon.h"
 #include "assets/sunny_icon.h"
 #include "assets/standby_icon.h"
+#include "assets/display_icon.h"
 
 enum PlaybackStrategy {
     NORMAL,
@@ -44,8 +45,10 @@ struct AppData {
     PlaybackStrategy current_strategy;
     int flIntensity;
     bool next_song_pending;
+    bool dispUpdate;
     std::string next_song_path;
     std::string last_title; // Cache to avoid redundant UI updates
+    int current_index;
     GtkWidget *shuffle_button;
     GtkWidget *repeat_button;
 };
@@ -54,14 +57,12 @@ static LIPC * lipcInstance = 0;
 
 void openLipcInstance() {
 	if (lipcInstance == 0) {
-		fwprintf(stderr, L"---->openLipcInstance()\n");
 		lipcInstance = LipcOpen("com.kbarni.kinamp");
 	}
 }
 
 void closeLipcInstance() {
 	if (lipcInstance != 0) {
-		fwprintf(stderr, L"---->closeLipcInstance()\n");
 		LipcClose(lipcInstance);
 	}
 }
@@ -72,10 +73,6 @@ void enableSleep() {
 
 void disableSleep() {
     LipcSetIntProperty(lipcInstance,"com.lab126.powerd","preventScreenSaver",1);
-}
-
-void keepBTenabled() {
-    LipcSetIntProperty(lipcInstance,"com.lab126.btfd","ensureBTconnection",1);
 }
 
 void toggleFrontLight(AppData *ad){
@@ -201,9 +198,9 @@ gboolean update_progress_cb(gpointer data) {
         int pos_seconds = position / GST_SECOND;
         
         if (app_data->backend->is_paused) {
-             snprintf(time_str, sizeof(time_str), " || --:--");//%02d:%02d", pos_seconds / 60, pos_seconds % 60);
+             snprintf(time_str, sizeof(time_str), (app_data->dispUpdate?"◫%02d:%02d":"  ◫  "), pos_seconds / 60, pos_seconds % 60);
         } else {
-             snprintf(time_str, sizeof(time_str), " > --:--");//%02d:%02d", pos_seconds / 60, pos_seconds % 60);
+             snprintf(time_str, sizeof(time_str), (app_data->dispUpdate?"▷%02d:%02d":"  ▷  "), pos_seconds / 60, pos_seconds % 60);
         }
         gtk_label_set_text(app_data->time_label, time_str);
         
@@ -222,7 +219,7 @@ gboolean update_progress_cb(gpointer data) {
 
     } else {
         // Stopped state
-        gtk_label_set_text(app_data->time_label, " [] --:--");
+        gtk_label_set_text(app_data->time_label, "▢--:--");
         if (app_data->last_title != "No song playing") {
             gtk_label_set_text(app_data->song_title_label, "No song playing");
             app_data->last_title = "No song playing";
@@ -299,7 +296,6 @@ void save_state(AppData *app_data) {
 
 void load_state(AppData *app_data) {
     std::string playlist_path = get_config_path(".kinamp_playlist.m3u");
-    fwprintf(stderr, L"Opening %s\n",playlist_path.c_str());
     std::ifstream infile(playlist_path.c_str());
     if (infile.is_open()) {
         gtk_list_store_clear(app_data->playlist_store);
@@ -315,7 +311,6 @@ void load_state(AppData *app_data) {
     }
 
     std::string config_path = get_config_path(".kinamp.conf");
-    fwprintf(stderr, L"Opening %s\n",config_path.c_str());
     std::ifstream conffile(config_path.c_str());
     int current_index = -1;
     if (conffile.is_open()) {
@@ -343,7 +338,6 @@ void load_state(AppData *app_data) {
         }
         conffile.close();
     }
-    fwprintf(stderr, L"Closing files\n");
     if (current_index != -1) {
         GtkTreePath *path = gtk_tree_path_new_from_indices(current_index, -1);
         if (path) {
@@ -406,11 +400,11 @@ void play_selected_song(AppData* app_data) {
         gtk_tree_model_get(model, &iter, 0, &file_path, -1);
         if (file_path) {
             app_data->backend->play_file(file_path);
-            
             // Update title immediately on play
             char* path_copy = g_strdup(file_path);
             char* base = basename(path_copy);
             gtk_label_set_text(app_data->song_title_label, base);
+
             app_data->last_title = base; // Update cache
             
             g_free(path_copy);
@@ -493,6 +487,7 @@ void on_close_clicked(GtkWidget *widget, gpointer data) {
     (void)widget;
     AppData *app_data = (AppData*)data;
     LipcSetIntProperty(lipcInstance,"com.lab126.powerd","flIntensity",app_data->flIntensity);
+    LipcSetIntProperty(lipcInstance,"com.lab126.btfd","ensureBTconnection",0);
     enableSleep();
     closeLipcInstance();
     save_state(app_data);
@@ -541,6 +536,11 @@ void on_bluetooth_clicked(GtkWidget *widget, gpointer data) {
     LipcSetStringProperty(lipcInstance,"com.lab126.pillow","customDialog","{\"name\":\"bt_wizard_dialog\", \"clientParams\": {\"show\":true, \"winmgrModal\":true, \"replySrc\":\"\"}}");
 }
 
+void on_displayUpdate_clicked(GtkWidget *widget, gpointer data) {
+    (void)widget;
+    AppData *app_data = (AppData*)data;
+    app_data->dispUpdate = !(app_data->dispUpdate);
+}
 
 // --- Playlist Management Callbacks ---
 void on_add_file_clicked(GtkWidget *widget, gpointer data) {
@@ -688,13 +688,16 @@ int main(int argc, char* argv[]) {
     app_data.current_strategy = NORMAL;
     app_data.next_song_pending = false;
     app_data.flIntensity = 0;
+    app_data.dispUpdate=true;
 
     backend.set_eos_callback(on_eos_cb, &app_data);
 
     openLipcInstance();
     disableSleep();
     LipcGetIntProperty(lipcInstance,"com.lab126.powerd","flIntensity",&app_data.flIntensity);
-    keepBTenabled();
+
+    LipcSetIntProperty(lipcInstance,"com.lab126.btfd","ensureBTconnection",1);
+    LipcSetStringProperty(lipcInstance,"com.lab126.btfd","BTenable","1:1");
 
     // --- Main Window ---
     GtkWidget *window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
@@ -714,11 +717,8 @@ int main(int argc, char* argv[]) {
     // First line: Title Image
     GdkPixbuf *title_pixbuf = gdk_pixbuf_new_from_inline(-1, title_image, FALSE, NULL);
     GtkWidget *title_image = gtk_image_new_from_pixbuf(title_pixbuf);
-    g_object_unref(title_pixbuf); // GtkImage takes a copy or ref? documentation says it takes a ref, but usually safe to unref if not needed else. 
-    // Actually, create_from_pixbuf adds a ref. We should unref ours.
-    // However, pixbuf_new_from_inline might need care.
-    // Let's rely on standard behavior: GtkImage references it.
-    
+    g_object_unref(title_pixbuf);
+
     // Center the title image
     GtkWidget *title_alignment = gtk_alignment_new(0.5, 0.5, 0, 0);
     gtk_container_add(GTK_CONTAINER(title_alignment), title_image);
@@ -729,9 +729,9 @@ int main(int argc, char* argv[]) {
     gtk_box_pack_start(GTK_BOX(player_vbox), info_hbox, FALSE, FALSE, 0);
 
     // Time Label
-    GtkWidget *time_label = gtk_label_new("[] 00:00");
+    GtkWidget *time_label = gtk_label_new("▢--:--");
     app_data.time_label = GTK_LABEL(time_label);
-    set_label_font(time_label, "Sans Bold 20");
+    set_label_font(time_label, "Mono Bold 20");
     GtkWidget *time_frame = gtk_frame_new(NULL);
     gtk_container_add(GTK_CONTAINER(time_frame), time_label);
     gtk_box_pack_start(GTK_BOX(info_hbox), time_frame, FALSE, FALSE, 0);
@@ -761,6 +761,7 @@ int main(int argc, char* argv[]) {
     GtkWidget *repeat_button = create_button_from_icon(repeat_icon, 72, 72, 5);
     app_data.repeat_button = repeat_button;
 
+    GtkWidget *dispupdate_button = create_button_from_icon(display_icon, 72, 72, 5);
     GtkWidget *frontlight_button = create_button_from_icon(sunny_icon, 72, 72, 5);
     GtkWidget *bluetooth_button = create_button_from_icon(bluetooth_icon, 72, 72, 5);
     GtkWidget *background_button = create_button_from_icon(standby_icon, 72, 72, 5);
@@ -774,6 +775,7 @@ int main(int argc, char* argv[]) {
     g_signal_connect(shuffle_button, "clicked", G_CALLBACK(on_shuffle_clicked), &app_data);
     g_signal_connect(repeat_button, "clicked", G_CALLBACK(on_repeat_clicked), &app_data);
  
+    g_signal_connect(dispupdate_button, "clicked", G_CALLBACK(on_displayUpdate_clicked), &app_data);
     g_signal_connect(frontlight_button, "clicked", G_CALLBACK(on_fl_clicked), &app_data);
     g_signal_connect(bluetooth_button, "clicked", G_CALLBACK(on_bluetooth_clicked), &app_data);
     g_signal_connect(background_button, "clicked", G_CALLBACK(on_background_clicked), &app_data);
@@ -801,6 +803,7 @@ int main(int argc, char* argv[]) {
 
     // Right aligned section (Bluetooth + Close)
     GtkWidget *right_controls_hbox = gtk_hbox_new(FALSE, 2);
+    gtk_box_pack_start(GTK_BOX(right_controls_hbox), dispupdate_button, FALSE, FALSE, 0);
     gtk_box_pack_start(GTK_BOX(right_controls_hbox), frontlight_button, FALSE, FALSE, 0);
     gtk_box_pack_start(GTK_BOX(right_controls_hbox), bluetooth_button, FALSE, FALSE, 0);
     gtk_box_pack_start(GTK_BOX(right_controls_hbox), background_button, FALSE, FALSE, 0);
@@ -867,9 +870,8 @@ int main(int argc, char* argv[]) {
 
 
     // --- Load State and Show Window ---
-    fwprintf(stderr, L"---->Loading state\n");
     load_state(&app_data);
-    g_timeout_add(200, update_progress_cb, &app_data);
+    g_timeout_add(500, update_progress_cb, &app_data);
     gtk_widget_show_all(window);
     gtk_main();
 

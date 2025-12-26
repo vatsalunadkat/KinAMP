@@ -74,6 +74,8 @@ private:
 
     EosCallback on_eos_callback;
     void* eos_user_data;
+    
+    gint64 last_position;
 
     // Helper to cleanup GStreamer resources
     void cleanup_pipeline();

@@ -134,7 +134,7 @@ void Decoder::decode_loop() {
 
 MusicBackend::MusicBackend() 
     : is_playing(false), is_paused(false), pipeline(NULL), bus(NULL), bus_watch_id(0),
-      stopping(false), on_eos_callback(NULL), eos_user_data(NULL)
+      stopping(false), on_eos_callback(NULL), eos_user_data(NULL), last_position(0)
 {
     // Ignore SIGPIPE globally for this process
     signal(SIGPIPE, SIG_IGN);
@@ -172,11 +172,20 @@ gint64 MusicBackend::get_duration() {
 }
 
 gint64 MusicBackend::get_position() {
+    if (is_paused) {
+        return last_position;
+    }
+
     if (pipeline && is_playing) {
-        GstFormat format = GST_FORMAT_TIME;
-        gint64 position;
-        if (gst_element_query_position(pipeline, &format, &position)) {
-            return position;
+        GstClock *clock = gst_element_get_clock(pipeline);
+        if (clock) {
+            GstClockTime current_time = gst_clock_get_time(clock);
+            GstClockTime base_time = gst_element_get_base_time(pipeline);
+            gst_object_unref(clock);
+
+            if (GST_CLOCK_TIME_IS_VALID(base_time) && current_time > base_time) {
+                return (gint64)(current_time - base_time);
+            }
         }
     }
     return 0;
@@ -196,6 +205,7 @@ void MusicBackend::play_file(const char* filepath) {
     current_filepath_str = filepath;
     is_playing = true;
     is_paused = false;
+    last_position = 0;
 
     // 1. Create Pipeline
     // filesrc reads from named pipe
@@ -239,6 +249,7 @@ void MusicBackend::pause() {
         gst_element_set_state(pipeline, GST_STATE_PLAYING);
         is_paused = false;
     } else {
+        last_position = get_position();
         gst_element_set_state(pipeline, GST_STATE_PAUSED);
         is_paused = true;
     }

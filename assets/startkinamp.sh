@@ -29,6 +29,8 @@ if is_process_running "KinAMP-minimal"; then
     alert "KinAMP","Background music playback stopped"
 else
     echo "Starting KinAMP GUI..."
+    lipc-set-prop -s com.lab126.btfd BTenable 0:1
+    sleep 1
     cd /nmt/us/KinAMP
     ./KinAMP
     exit_code=$?

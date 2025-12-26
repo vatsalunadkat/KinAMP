@@ -10,18 +10,29 @@ Supported audio formats:
 - FLAC
 - WAV
 
-Note that this is a GUI app, cannot run in the backgroud. To listen to music while reading, [SOX media player](https://www.mobileread.com/forums/showthread.php?t=368945) is a better alternative.
-
 Features
 --------
 
 - Fully native fast (C++ and GTK2) interface
 - Simple to use
 - Interface optimized for eink displays (minimal redraws to save battery)
+- Low power consumption (4-5% per hour with frontlight and display updates off)
 - Fast access to Bluetooth and frontlight settings
+- Background mode to continue listening while reading.
 - Uses [miniaudio](https://github.com/mackron/miniaudio) library for decoding.
-- Uses the integrated GStreamer as backend
+- Uses the integrated GStreamer library for output
 - No other dependencies
+
+Useage
+------
+
+![Button bar](assets/kinamp_buttons.png)
+
+### Using background mode
+
+- Start KinAMP and build your desired playlist.
+- Click the *Background* button (with the circles, next to close). KinAMP will close and background playback will start
+- To stop background playback, click the KinAMP booklet again.
 
 Installation
 ------------
@@ -44,4 +55,4 @@ cmake .. -DCMAKE_TOOLCHAIN_FILE=armhf-toolchain.cmake
 License
 -------
 
-This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version. This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details. You should have received a copy of the GNU General Public License along with this program. If not, see <http://www.gnu.org/licenses/>.
+This program is free software: you can redistribute it and/or modify it under the terms of the **GNU General Public License** as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version. This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details. You should have received a copy of the GNU General Public License along with this program. If not, see <http://www.gnu.org/licenses/>.
