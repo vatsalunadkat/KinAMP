@@ -164,7 +164,7 @@ gint64 MusicBackend::get_duration() {
     if (pipeline) {
         GstFormat format = GST_FORMAT_TIME;
         gint64 duration;
-        if (gst_element_query_duration(pipeline, &format, &duration)) {
+        if (gst_element_query_duration(pipeline, format, &duration)) {
             return duration;
         }
     }
@@ -210,7 +210,7 @@ void MusicBackend::play_file(const char* filepath) {
     // 1. Create Pipeline
     // filesrc reads from named pipe
     gchar *pipeline_desc = g_strdup_printf(
-        "filesrc location=\"%s\" ! audio/x-raw-int, endianness=1234, signed=true, width=16, depth=16, rate=44100, channels=2 ! queue ! mixersink",
+        "filesrc location=\"%s\" ! audio/x-raw, format=S16LE, layout=interleaved, rate=44100, channels=2 ! queue ! autoaudiosink",
         PIPE_PATH
     );
     pipeline = gst_parse_launch(pipeline_desc, NULL);

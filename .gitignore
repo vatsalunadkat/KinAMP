@@ -1,0 +1,28 @@
+# Build directories
+build/
+release_pack/
+
+# Compiled Object files
+*.o
+*.obj
+
+# Libraries
+*.a
+*.so
+*.dylib
+*.dll
+
+# Executables
+KinAMP/KinAMP
+KinAMP/KinAMP-minimal
+stub_lipc
+
+# System
+.DS_Store
+Thumbs.db
+
+# Editors
+.vscode/
+.idea/
+*.swp
+*~

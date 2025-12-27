@@ -8,10 +8,12 @@ find_package(PkgConfig REQUIRED)
 
 pkg_check_modules(GTK IMPORTED_TARGET REQUIRED gtk+-2.0)
 pkg_check_modules(XML IMPORTED_TARGET REQUIRED libxml-2.0)
-#pkg_check_modules(GLIB REQUIRED glib-2.0)
-#pkg_check_modules(GST REQUIRED gstreamer-0.10)
+pkg_check_modules(GLIB IMPORTED_TARGET REQUIRED glib-2.0)
+pkg_check_modules(GST IMPORTED_TARGET REQUIRED gstreamer-1.0)
 
 find_package(Threads REQUIRED)
+link_directories(${CMAKE_CURRENT_SOURCE_DIR})
+
 
 add_subdirectory(miniaudio)
 
@@ -24,9 +26,11 @@ add_executable(${PROJECT_NAME}
 target_link_libraries(${PROJECT_NAME} PRIVATE
     PkgConfig::GTK
     PkgConfig::XML
+    PkgConfig::GLIB
+    PkgConfig::GST
     Threads::Threads
     miniaudio
-    gstreamer-0.10
+
     gthread-2.0
     lipc
     dl
@@ -40,7 +44,7 @@ add_executable(KinAMP-minimal
 target_link_libraries(KinAMP-minimal PRIVATE
     PkgConfig::GTK
     PkgConfig::XML
-    gstreamer-0.10
+    PkgConfig::GST
     Threads::Threads
     miniaudio
     dl

@@ -747,9 +747,16 @@ int main(int argc, char* argv[]) {
     gtk_widget_set_size_request(separator, -1, 10); // Give it some vertical space
     gtk_box_pack_start(GTK_BOX(player_vbox), separator, FALSE, FALSE, 5);
 
-    // Control Buttons
-    GtkWidget *controls_hbox = gtk_hbox_new(FALSE, 2); 
-    gtk_box_pack_start(GTK_BOX(player_vbox), controls_hbox, FALSE, FALSE, 0);
+    // --- Split Controls into Two Rows for 600px width ---
+    
+    // Row 1: Playback Controls & Strategies
+    GtkWidget *row1_hbox = gtk_hbox_new(FALSE, 2); 
+    gtk_box_pack_start(GTK_BOX(player_vbox), row1_hbox, FALSE, FALSE, 0);
+
+    // Row 2: System Controls
+    GtkWidget *row2_hbox = gtk_hbox_new(FALSE, 2); 
+    gtk_box_pack_start(GTK_BOX(player_vbox), row2_hbox, FALSE, FALSE, 0);
+
 
     GtkWidget *prev_button = create_button_from_icon(skip_previous_icon, 72, 72, 5);
     GtkWidget *play_button = create_button_from_icon(play_pause_icon, 72, 72, 5);
@@ -781,34 +788,32 @@ int main(int argc, char* argv[]) {
     g_signal_connect(background_button, "clicked", G_CALLBACK(on_background_clicked), &app_data);
     g_signal_connect(close_button, "clicked", G_CALLBACK(on_close_clicked), &app_data);
 
-    // Pack buttons
-    gtk_box_pack_start(GTK_BOX(controls_hbox), prev_button, FALSE, FALSE, 0);
-    gtk_box_pack_start(GTK_BOX(controls_hbox), play_button, FALSE, FALSE, 0);
-    gtk_box_pack_start(GTK_BOX(controls_hbox), stop_button, FALSE, FALSE, 0);
-    gtk_box_pack_start(GTK_BOX(controls_hbox), next_button, FALSE, FALSE, 0);
+    // --- Row 1 Packing ---
+    // Left: Playback
+    gtk_box_pack_start(GTK_BOX(row1_hbox), prev_button, FALSE, FALSE, 0);
+    gtk_box_pack_start(GTK_BOX(row1_hbox), play_button, FALSE, FALSE, 0);
+    gtk_box_pack_start(GTK_BOX(row1_hbox), stop_button, FALSE, FALSE, 0);
+    gtk_box_pack_start(GTK_BOX(row1_hbox), next_button, FALSE, FALSE, 0);
     
     // Spacer
     GtkWidget *spacer1 = gtk_label_new("");
-    gtk_box_pack_start(GTK_BOX(controls_hbox), spacer1, TRUE, TRUE, 0);
+    gtk_box_pack_start(GTK_BOX(row1_hbox), spacer1, TRUE, TRUE, 0);
     
-    // Center buttons
-    GtkWidget *center_hbox = gtk_hbox_new(FALSE, 2);
-    gtk_box_pack_start(GTK_BOX(center_hbox), shuffle_button, FALSE, FALSE, 0);
-    gtk_box_pack_start(GTK_BOX(center_hbox), repeat_button, FALSE, FALSE, 0);
-    gtk_box_pack_start(GTK_BOX(controls_hbox), center_hbox, FALSE, FALSE, 0);
+    // Right: Shuffle/Repeat
+    gtk_box_pack_start(GTK_BOX(row1_hbox), shuffle_button, FALSE, FALSE, 0);
+    gtk_box_pack_start(GTK_BOX(row1_hbox), repeat_button, FALSE, FALSE, 0);
     
-    // Spacer
+    // --- Row 2 Packing ---
+    // Spacer to push everything to right (or center?)
+    // Let's right align the system buttons as before
     GtkWidget *spacer2 = gtk_label_new("");
-    gtk_box_pack_start(GTK_BOX(controls_hbox), spacer2, TRUE, TRUE, 0);
+    gtk_box_pack_start(GTK_BOX(row2_hbox), spacer2, TRUE, TRUE, 0);
 
-    // Right aligned section (Bluetooth + Close)
-    GtkWidget *right_controls_hbox = gtk_hbox_new(FALSE, 2);
-    gtk_box_pack_start(GTK_BOX(right_controls_hbox), dispupdate_button, FALSE, FALSE, 0);
-    gtk_box_pack_start(GTK_BOX(right_controls_hbox), frontlight_button, FALSE, FALSE, 0);
-    gtk_box_pack_start(GTK_BOX(right_controls_hbox), bluetooth_button, FALSE, FALSE, 0);
-    gtk_box_pack_start(GTK_BOX(right_controls_hbox), background_button, FALSE, FALSE, 0);
-    gtk_box_pack_start(GTK_BOX(right_controls_hbox), close_button, FALSE, FALSE, 0);
-    gtk_box_pack_start(GTK_BOX(controls_hbox), right_controls_hbox, FALSE, FALSE, 0);
+    gtk_box_pack_start(GTK_BOX(row2_hbox), dispupdate_button, FALSE, FALSE, 0);
+    gtk_box_pack_start(GTK_BOX(row2_hbox), frontlight_button, FALSE, FALSE, 0);
+    gtk_box_pack_start(GTK_BOX(row2_hbox), bluetooth_button, FALSE, FALSE, 0);
+    gtk_box_pack_start(GTK_BOX(row2_hbox), background_button, FALSE, FALSE, 0);
+    gtk_box_pack_start(GTK_BOX(row2_hbox), close_button, FALSE, FALSE, 0);
 
 
     // --- Playlist Section ---
